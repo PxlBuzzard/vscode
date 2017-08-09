@@ -225,11 +225,20 @@ class SelectBracketAction extends EditorAction {
 			return;
 		}
 
-		const originalPosition = selection.getStartPosition();
+		let originalPosition = selection.getStartPosition();
 
 		// find previous open bracket with no match
 		let prevBracket = null;
 		let currentPosition = new Position(originalPosition.lineNumber, originalPosition.column);
+
+		prevBracket = model.findPrevBracket(currentPosition);
+		let oneColLeft = new Position(currentPosition.lineNumber, currentPosition.column - 1);
+		let leftSideBracket = new Position(prevBracket.range.startLineNumber, prevBracket.range.startColumn);
+		if (leftSideBracket.equals(oneColLeft)) { //I assume startColumn is the left side of a single char
+			originalPosition = oneColLeft;
+			currentPosition = oneColLeft;
+		}
+
 		let setCount = 0;
 		do {
 			prevBracket = model.findPrevBracket(currentPosition);
