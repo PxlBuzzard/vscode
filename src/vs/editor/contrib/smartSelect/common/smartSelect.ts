@@ -183,11 +183,19 @@ class ExpandBracketController implements IEditorContribution {
 				let prevBracket = model.findPrevBracket(originalStartPosition);
 				if (prevBracket && prevBracket.range.getEndPosition().equals(originalStartPosition)) {
 					const matchPrevBracket = model.matchBracket(prevBracket.range.getStartPosition());
-					return new Selection(
-						matchPrevBracket[0].startLineNumber,
-						matchPrevBracket[0].startColumn,
-						matchPrevBracket[1].endLineNumber,
-						matchPrevBracket[1].endColumn);
+					if (matchPrevBracket && prevBracket.isOpen) {
+						return new Selection(
+							matchPrevBracket[0].startLineNumber,
+							matchPrevBracket[0].startColumn,
+							matchPrevBracket[1].endLineNumber,
+							matchPrevBracket[1].endColumn);
+					} else if (matchPrevBracket && !prevBracket.isOpen) {
+						return new Selection(
+							matchPrevBracket[0].endLineNumber,
+							matchPrevBracket[0].endColumn,
+							matchPrevBracket[1].startLineNumber,
+							matchPrevBracket[1].startColumn);
+					}
 				}
 
 				// check if the selection is directly inside a set of brackets
@@ -201,6 +209,21 @@ class ExpandBracketController implements IEditorContribution {
 						matchPrev[0].startColumn,
 						matchPrev[1].endLineNumber,
 						matchPrev[1].endColumn);
+				}
+
+				// check if the cursor, not selection, is directly outside a set of matchable brackets
+				if (originalStartPosition.equals(originalEndPosition) && matchPrev) {
+					return new Selection(
+						matchPrev[0].startLineNumber,
+						matchPrev[0].startColumn,
+						matchPrev[1].endLineNumber,
+						matchPrev[1].endColumn);
+				} else if (originalStartPosition.equals(originalEndPosition) && matchNext) {
+					return new Selection(
+						matchNext[0].startLineNumber,
+						matchNext[0].startColumn,
+						matchNext[1].endLineNumber,
+						matchNext[1].endColumn);
 				}
 
 				// find previous open bracket with no matching bracket from the start of the selection
@@ -235,8 +258,10 @@ class ExpandBracketController implements IEditorContribution {
 				matchPrev = prevBracket ? model.matchBracket(prevBracket.range.getStartPosition()) : null;
 				matchNext = nextBracket ? model.matchBracket(nextBracket.range.getStartPosition()) : null;
 				let bracketsToSelect: [Range, Range] = null;
-				if (!matchPrev || !matchNext) {
-					return selection;
+				if (!matchPrev) {
+					bracketsToSelect = matchNext;
+				} else if (!matchNext) {
+					bracketsToSelect = matchPrev;
 				} else if (matchPrev[1].getEndPosition().isBefore(matchNext[0].getEndPosition())) {
 					bracketsToSelect = matchNext;
 				} else if (!matchPrev[1].getEndPosition().isBefore(matchNext[0].getEndPosition())) {
@@ -249,11 +274,21 @@ class ExpandBracketController implements IEditorContribution {
 						matchPrev[1].endColumn);
 				}
 
-				return new Selection(
-					bracketsToSelect[0].endLineNumber,
-					bracketsToSelect[0].endColumn,
-					bracketsToSelect[1].startLineNumber,
-					bracketsToSelect[1].startColumn);
+				if (bracketsToSelect && bracketsToSelect === matchPrev) {
+					return new Selection(
+						bracketsToSelect[0].endLineNumber,
+						bracketsToSelect[0].endColumn,
+						bracketsToSelect[1].startLineNumber,
+						bracketsToSelect[1].startColumn);
+				} else if (bracketsToSelect && bracketsToSelect === matchNext) {
+					return new Selection(
+						bracketsToSelect[0].startLineNumber,
+						bracketsToSelect[0].startColumn,
+						bracketsToSelect[1].endLineNumber,
+						bracketsToSelect[1].endColumn);
+				}
+
+				return selection;
 			});
 		}
 
